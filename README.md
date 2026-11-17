@@ -1,5 +1,12 @@
 # Game Performance Overlay (Windows 11)
 
+[![GitHub Release](https://img.shields.io/github/v/release/tiendung21111/GamePerfOverlay?color=10ff50&label=Download)](https://github.com/tiendung21111/GamePerfOverlay/releases)
+
+> 🚀 **[TẢI VỀ BẢN CHẠY NGAY TẠI ĐÂY (GITHUB RELEASES)](https://github.com/tiendung21111/GamePerfOverlay/releases)**  
+> *(Tải file `GamePerfOverlay-v1.0.0-win-x64.zip` về giải nén ra là chạy được ngay trên mọi máy tính Windows 10/11, không cần cài đặt .NET SDK hay clone mã nguồn).*
+
+---
+
 Ứng dụng đo nhiệt độ, xung nhịp và % hiệu năng CPU, GPU, VRAM, RAM và FPS siêu nhẹ, giao diện thuần hiển thị (100% trong suốt, chữ xanh neon Game Bar), tối ưu cho game thủ trên Windows 10/11.
 
 ---
