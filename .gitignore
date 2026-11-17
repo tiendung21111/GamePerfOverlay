@@ -9,7 +9,9 @@
 
 # Published build and zip packages (to avoid git bloat)
 publish/
+Release/
 *.zip
+*.exe
 
 # Temporary files
 *.tmp
