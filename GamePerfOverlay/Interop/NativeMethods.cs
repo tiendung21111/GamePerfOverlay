@@ -51,4 +51,23 @@ public static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PROCESSOR_POWER_INFORMATION
+    {
+        public uint Number;
+        public uint MaxMhz;
+        public uint CurrentMhz;
+        public uint MhzLimit;
+        public uint MaxIdleState;
+        public uint CurrentIdleState;
+    }
+
+    [DllImport("powrprof.dll")]
+    public static extern int CallNtPowerInformation(
+        int informationLevel,
+        IntPtr lpInputBuffer,
+        uint nInputBufferSize,
+        IntPtr lpOutputBuffer,
+        uint nOutputBufferSize);
 }

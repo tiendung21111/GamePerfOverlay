@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using GamePerfOverlay.Interop;
 using GamePerfOverlay.Models;
 using LibreHardwareMonitor.Hardware;
 
@@ -12,6 +15,9 @@ public class SensorService : ISensorService
     private readonly List<IHardware> _cpus = new();
     private readonly List<IHardware> _gpus = new();
     private readonly List<IHardware> _memories = new();
+    private PerformanceCounter? _cpuPerfCounter;
+    private float _cpuBaseMhz;
+    private int _processorCount;
     private bool _initialized;
     private bool _disposed;
 
@@ -21,6 +27,19 @@ public class SensorService : ISensorService
 
         try
         {
+            _processorCount = Environment.ProcessorCount;
+            _cpuBaseMhz = QueryBaseCpuMhz();
+
+            try
+            {
+                _cpuPerfCounter = new PerformanceCounter("Processor Information", "% Processor Performance", "_Total");
+                _cpuPerfCounter.NextValue();
+            }
+            catch
+            {
+                _cpuPerfCounter = null;
+            }
+
             _computer = new Computer
             {
                 IsCpuEnabled = true,
@@ -45,6 +64,108 @@ public class SensorService : ISensorService
         {
             _initialized = false;
         }
+    }
+
+    private float QueryBaseCpuMhz()
+    {
+        try
+        {
+            int structSize = Marshal.SizeOf<NativeMethods.PROCESSOR_POWER_INFORMATION>();
+            int bufferSize = structSize * _processorCount;
+            IntPtr buffer = Marshal.AllocHGlobal(bufferSize);
+
+            try
+            {
+                int status = NativeMethods.CallNtPowerInformation(11, IntPtr.Zero, 0, buffer, (uint)bufferSize);
+                if (status == 0)
+                {
+                    uint maxMhz = 0;
+                    for (int i = 0; i < _processorCount; i++)
+                    {
+                        var info = Marshal.PtrToStructure<NativeMethods.PROCESSOR_POWER_INFORMATION>(IntPtr.Add(buffer, i * structSize));
+                        if (info.MaxMhz > maxMhz)
+                        {
+                            maxMhz = info.MaxMhz;
+                        }
+                    }
+
+                    if (maxMhz > 0)
+                    {
+                        return maxMhz;
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        catch
+        {
+        }
+
+        return 2000f;
+    }
+
+    private float GetFallbackCpuClockMhz()
+    {
+        if (_cpuPerfCounter != null && _cpuBaseMhz > 0)
+        {
+            try
+            {
+                float perfPct = _cpuPerfCounter.NextValue();
+                if (perfPct > 0)
+                {
+                    return _cpuBaseMhz * (perfPct / 100.0f);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return QueryCurrentCpuMhzFromPowerInfo();
+    }
+
+    private float QueryCurrentCpuMhzFromPowerInfo()
+    {
+        try
+        {
+            int structSize = Marshal.SizeOf<NativeMethods.PROCESSOR_POWER_INFORMATION>();
+            int bufferSize = structSize * _processorCount;
+            IntPtr buffer = Marshal.AllocHGlobal(bufferSize);
+
+            try
+            {
+                int status = NativeMethods.CallNtPowerInformation(11, IntPtr.Zero, 0, buffer, (uint)bufferSize);
+                if (status == 0)
+                {
+                    uint maxCurrentMhz = 0;
+                    for (int i = 0; i < _processorCount; i++)
+                    {
+                        var info = Marshal.PtrToStructure<NativeMethods.PROCESSOR_POWER_INFORMATION>(IntPtr.Add(buffer, i * structSize));
+                        if (info.CurrentMhz > maxCurrentMhz)
+                        {
+                            maxCurrentMhz = info.CurrentMhz;
+                        }
+                    }
+
+                    if (maxCurrentMhz > 0)
+                    {
+                        return maxCurrentMhz;
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+        catch
+        {
+        }
+
+        return _cpuBaseMhz > 0 ? _cpuBaseMhz : 0;
     }
 
     private void CategorizeHardware(IHardware hardware)
@@ -113,7 +234,7 @@ public class SensorService : ISensorService
                             cpuTemp = (int)Math.Round(sensor.Value.Value);
                         }
                     }
-                    else if (sensor.SensorType == SensorType.Clock && sensor.Value.HasValue)
+                    else if (sensor.SensorType == SensorType.Clock && sensor.Value.HasValue && sensor.Value.Value > 0)
                     {
                         if (sensor.Name.Contains("#1", StringComparison.OrdinalIgnoreCase) || cpuClockMhz == 0)
                         {
@@ -121,6 +242,12 @@ public class SensorService : ISensorService
                         }
                     }
                 }
+            }
+
+            // Fallback for CPU clock if LibreHardwareMonitor cannot read MSR registers (Windows 11 Driver Blocklist / Core Isolation)
+            if (cpuClockMhz <= 0)
+            {
+                cpuClockMhz = GetFallbackCpuClockMhz();
             }
 
             metrics.CpuUsage = (int)Math.Clamp(Math.Round(cpuLoad), 0, 100);
@@ -165,9 +292,13 @@ public class SensorService : ISensorService
                             gpuTemp = (int)Math.Round(sensor.Value.Value);
                         }
                     }
-                    else if (sensor.SensorType == SensorType.Clock && sensor.Value.HasValue)
+                    else if (sensor.SensorType == SensorType.Clock && sensor.Value.HasValue && sensor.Value.Value > 0)
                     {
-                        if (sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) || gpuClockMhz == 0)
+                        bool isCoreOrGraphics = sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
+                                               sensor.Name.Contains("Graphics", StringComparison.OrdinalIgnoreCase);
+                        bool isMemory = sensor.Name.Contains("Memory", StringComparison.OrdinalIgnoreCase);
+
+                        if (isCoreOrGraphics || (gpuClockMhz == 0 && !isMemory))
                         {
                             gpuClockMhz = sensor.Value.Value;
                         }
@@ -263,6 +394,7 @@ public class SensorService : ISensorService
 
         try
         {
+            _cpuPerfCounter?.Dispose();
             _computer?.Close();
         }
         catch

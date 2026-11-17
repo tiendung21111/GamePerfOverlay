@@ -31,4 +31,16 @@ public class SensorServiceTests
         Assert.NotNull(metrics);
         Assert.Equal("-- FPS", metrics.FpsDisplay);
     }
+
+    [Fact]
+    public void SensorService_CpuClockGhz_IsGreaterThanZero()
+    {
+        using var service = new SensorService();
+        service.Initialize();
+
+        var metrics = service.SnapshotMetrics(null);
+
+        Assert.NotNull(metrics);
+        Assert.True(metrics.CpuClockGhz > 0, $"Expected CpuClockGhz > 0, but got {metrics.CpuClockGhz}");
+    }
 }
