@@ -1,0 +1,16 @@
+# Build and binary directories
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Published build and zip packages (to avoid git bloat)
+publish/
+*.zip
+
+# Temporary files
+*.tmp
+*.log

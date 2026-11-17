@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GamePerfOverlay.Tests/GamePerfOverlay.Tests.csproj" />
+  <Project Path="GamePerfOverlay/GamePerfOverlay.csproj" />
+</Solution>
