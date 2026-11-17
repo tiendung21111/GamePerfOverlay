@@ -18,6 +18,8 @@ public class SensorServiceTests
         Assert.Equal("60 FPS", metrics.FpsDisplay);
         Assert.InRange(metrics.CpuUsage, 0, 100);
         Assert.InRange(metrics.RamUsagePercent, 0, 100);
+        Assert.True(metrics.CpuTemp.HasValue, "CpuTemp should have a value when PawnIO is installed");
+        Assert.InRange(metrics.CpuTemp.Value, 20, 115);
     }
 
     [Fact]

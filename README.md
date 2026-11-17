@@ -57,6 +57,7 @@
 ### Mang Sang Máy Khác (Portable):
 - Sao chép toàn bộ thư mục `publish/` (hoặc file `GamePerfOverlay.exe`) sang USB/Google Drive.
 - Có thể chạy trực tiếp trên bất kỳ máy tính Windows 10/11 64-bit nào mà không cần cài đặt thêm .NET SDK.
+- *Lưu ý về đo nhiệt độ trên Windows 11:* Ứng dụng sử dụng driver phần cứng chuẩn mới `PawnIO` (thay thế WinRing0 cũ hay bị Defender chặn). Nếu máy mới hiển thị `--°C`, chỉ cần mở PowerShell chạy `winget install namazso.PawnIO` là nhiệt độ sẽ nhận diện tức thì.
 
 ---
 
