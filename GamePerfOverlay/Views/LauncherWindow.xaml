@@ -45,13 +45,19 @@
         <!-- Platform Filter Button Style -->
         <Style x:Key="SidebarTabButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -62,6 +68,51 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="AllTabButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarTabButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsAllSelected}" Value="True">
+                    <Setter Property="Background" Value="#14261c"/>
+                    <Setter Property="BorderBrush" Value="#10ff50"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SteamTabButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarTabButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSteamSelected}" Value="True">
+                    <Setter Property="Background" Value="#14261c"/>
+                    <Setter Property="BorderBrush" Value="#10ff50"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="RiotTabButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarTabButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsRiotSelected}" Value="True">
+                    <Setter Property="Background" Value="#14261c"/>
+                    <Setter Property="BorderBrush" Value="#10ff50"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EpicTabButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarTabButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEpicSelected}" Value="True">
+                    <Setter Property="Background" Value="#14261c"/>
+                    <Setter Property="BorderBrush" Value="#10ff50"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StandaloneTabButtonStyle" TargetType="Button" BasedOn="{StaticResource SidebarTabButton}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsStandaloneSelected}" Value="True">
+                    <Setter Property="Background" Value="#14261c"/>
+                    <Setter Property="BorderBrush" Value="#10ff50"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -168,51 +219,79 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="NỀN TẢNG" FontSize="10" FontWeight="Bold" Foreground="#475569" Margin="8,0,0,8"/>
+                    <TextBlock Grid.Row="0" Text="NỀN TẢNG" FontSize="11" FontWeight="Bold" Foreground="#94a3b8" Margin="8,0,0,10"/>
 
                     <StackPanel Grid.Row="1">
-                        <Button Style="{StaticResource SidebarTabButton}" Command="{Binding SelectPlatformCommand}" CommandParameter="All">
-                            <Grid>
-                                <TextBlock Text="Tất cả game" FontSize="12" FontWeight="SemiBold" Foreground="#10ff50"/>
-                                <TextBlock Text="{Binding TotalGameCount}" HorizontalAlignment="Right" FontSize="11" Foreground="#64748b"/>
+                        <Button Style="{StaticResource AllTabButtonStyle}" Command="{Binding SelectPlatformCommand}" CommandParameter="All">
+                            <Grid Margin="2,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#10ff50" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Tất cả game" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#1e293b" CornerRadius="10" Padding="8,2">
+                                    <TextBlock Text="{Binding TotalGameCount}" FontSize="11" FontWeight="Bold" Foreground="#cbd5e1"/>
+                                </Border>
                             </Grid>
                         </Button>
 
-                        <Button Style="{StaticResource SidebarTabButton}" Command="{Binding SelectPlatformCommand}" CommandParameter="Steam">
-                            <Grid>
-                                <TextBlock Text="Steam" FontSize="12" Foreground="#38bdf8"/>
-                                <TextBlock Text="{Binding SteamGameCount}" HorizontalAlignment="Right" FontSize="11" Foreground="#64748b"/>
+                        <Button Style="{StaticResource SteamTabButtonStyle}" Command="{Binding SelectPlatformCommand}" CommandParameter="Steam">
+                            <Grid Margin="2,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#38bdf8" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Steam" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#1e293b" CornerRadius="10" Padding="8,2">
+                                    <TextBlock Text="{Binding SteamGameCount}" FontSize="11" FontWeight="Bold" Foreground="#cbd5e1"/>
+                                </Border>
                             </Grid>
                         </Button>
 
-                        <Button Style="{StaticResource SidebarTabButton}" Command="{Binding SelectPlatformCommand}" CommandParameter="Riot">
-                            <Grid>
-                                <TextBlock Text="Riot Games" FontSize="12" Foreground="#f87171"/>
-                                <TextBlock Text="{Binding RiotGameCount}" HorizontalAlignment="Right" FontSize="11" Foreground="#64748b"/>
+                        <Button Style="{StaticResource RiotTabButtonStyle}" Command="{Binding SelectPlatformCommand}" CommandParameter="Riot">
+                            <Grid Margin="2,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#f43f5e" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Riot Games" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#1e293b" CornerRadius="10" Padding="8,2">
+                                    <TextBlock Text="{Binding RiotGameCount}" FontSize="11" FontWeight="Bold" Foreground="#cbd5e1"/>
+                                </Border>
                             </Grid>
                         </Button>
 
-                        <Button Style="{StaticResource SidebarTabButton}" Command="{Binding SelectPlatformCommand}" CommandParameter="Epic">
-                            <Grid>
-                                <TextBlock Text="Epic Games" FontSize="12" Foreground="#cbd5e1"/>
-                                <TextBlock Text="{Binding EpicGameCount}" HorizontalAlignment="Right" FontSize="11" Foreground="#64748b"/>
+                        <Button Style="{StaticResource EpicTabButtonStyle}" Command="{Binding SelectPlatformCommand}" CommandParameter="Epic">
+                            <Grid Margin="2,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#94a3b8" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Epic Games" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#1e293b" CornerRadius="10" Padding="8,2">
+                                    <TextBlock Text="{Binding EpicGameCount}" FontSize="11" FontWeight="Bold" Foreground="#cbd5e1"/>
+                                </Border>
                             </Grid>
                         </Button>
 
-                        <Button Style="{StaticResource SidebarTabButton}" Command="{Binding SelectPlatformCommand}" CommandParameter="Standalone">
-                            <Grid>
-                                <TextBlock Text="Khác / .exe" FontSize="12" Foreground="#a78bfa"/>
-                                <TextBlock Text="{Binding StandaloneGameCount}" HorizontalAlignment="Right" FontSize="11" Foreground="#64748b"/>
+                        <Button Style="{StaticResource StandaloneTabButtonStyle}" Command="{Binding SelectPlatformCommand}" CommandParameter="Standalone">
+                            <Grid Margin="2,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="#a855f7" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Khác / .exe" FontSize="13" FontWeight="SemiBold" Foreground="#f8fafc" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Center" Background="#1e293b" CornerRadius="10" Padding="8,2">
+                                    <TextBlock Text="{Binding StandaloneGameCount}" FontSize="11" FontWeight="Bold" Foreground="#cbd5e1"/>
+                                </Border>
                             </Grid>
                         </Button>
                     </StackPanel>
 
                     <!-- Bottom Quick Info -->
-                    <Border Grid.Row="2" Background="#141a27" CornerRadius="8" Padding="10" BorderBrush="#1e293b" BorderThickness="1">
+                    <Border Grid.Row="2" Background="#141a27" CornerRadius="8" Padding="12" BorderBrush="#1e293b" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="TRẠNG THÁI APP" FontSize="9" FontWeight="Bold" Foreground="#64748b" Margin="0,0,0,4"/>
-                            <TextBlock Text="Overlay: Sẵn sàng" FontSize="11" Foreground="#10ff50" FontWeight="SemiBold"/>
-                            <TextBlock Text="Khi vào game: Tự ẩn" FontSize="10" Foreground="#94a3b8" Margin="0,2,0,0"/>
+                            <TextBlock Text="TRẠNG THÁI HỆ THỐNG" FontSize="9" FontWeight="Bold" Foreground="#94a3b8" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Border Width="6" Height="6" CornerRadius="3" Background="#10ff50" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Overlay HUD: Sẵn sàng" FontSize="11" Foreground="#f1f5f9" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <TextBlock Text="Khi vào game: Cửa sổ tự thu gọn xuống Tray" FontSize="10" Foreground="#94a3b8" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -266,9 +345,9 @@
 
                                                 <!-- Platform Badge -->
                                                 <Border HorizontalAlignment="Left" VerticalAlignment="Top" 
-                                                        Margin="8" Background="#000000" Opacity="0.85" 
+                                                        Margin="8" Background="#090d16" BorderBrush="#334155" BorderThickness="1" 
                                                         CornerRadius="4" Padding="6,2">
-                                                    <TextBlock Text="{Binding Platform}" FontSize="9" FontWeight="Bold" Foreground="#10ff50"/>
+                                                    <TextBlock Text="{Binding Platform}" FontSize="9" FontWeight="Bold" Foreground="#e2e8f0"/>
                                                 </Border>
 
                                                 <!-- Quick Remove Button -->
@@ -296,9 +375,9 @@
                                                        Foreground="White" TextTrimming="CharacterEllipsis"/>
 
                                             <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                                                <TextBlock FontSize="10" Foreground="#64748b">
+                                                <TextBlock FontSize="11" Foreground="#94a3b8">
                                                     <Run Text="Lần chơi: "/>
-                                                    <Run Text="{Binding PlayCount, StringFormat='{}{0} lần'}"/>
+                                                    <Run Text="{Binding PlayCount, StringFormat='{}{0} lần'}" FontWeight="SemiBold" Foreground="#e2e8f0"/>
                                                 </TextBlock>
                                             </StackPanel>
 
