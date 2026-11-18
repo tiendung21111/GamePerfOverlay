@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:GamePerfOverlay.ViewModels"
         mc:Ignorable="d"
         Title="Game Performance Overlay"
+        Icon="Assets/app.png"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"

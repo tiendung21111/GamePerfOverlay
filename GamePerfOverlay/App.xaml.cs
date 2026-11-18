@@ -136,9 +136,24 @@ public partial class App : System.Windows.Application
 
     private void InitializeTrayIcon()
     {
+        Icon trayIcon = SystemIcons.Application;
+        try
+        {
+            var iconUri = new Uri("pack://application:,,,/Assets/app.ico");
+            var streamInfo = GetResourceStream(iconUri);
+            if (streamInfo != null)
+            {
+                using var stream = streamInfo.Stream;
+                trayIcon = new Icon(stream);
+            }
+        }
+        catch
+        {
+        }
+
         _notifyIcon = new Forms.NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = trayIcon,
             Text = "Game Performance Overlay (Ctrl + D + M)",
             Visible = true
         };
