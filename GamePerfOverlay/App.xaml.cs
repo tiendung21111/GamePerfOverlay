@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using GamePerfOverlay.Models;
 using GamePerfOverlay.Services;
 using GamePerfOverlay.ViewModels;
+using GamePerfOverlay.Views;
 using Forms = System.Windows.Forms;
 
 namespace GamePerfOverlay;
@@ -18,6 +19,10 @@ public partial class App : System.Windows.Application
     private HotkeyManager? _hotkeyManager;
     private OverlayViewModel? _viewModel;
     private MainWindow? _mainWindow;
+    private GameLibraryManager? _libraryManager;
+    private GameLauncherService? _launcherService;
+    private LauncherViewModel? _launcherViewModel;
+    private LauncherWindow? _launcherWindow;
     private Forms.NotifyIcon? _notifyIcon;
     private Forms.ToolStripMenuItem? _toggleMenuItem;
     private AppSettings _settings = new();
@@ -49,7 +54,13 @@ public partial class App : System.Windows.Application
         _hotkeyManager.ToggleRequested += ToggleOverlay;
         _hotkeyManager.Register();
 
-        // 4. Check Startup Mode
+        // 4. Initialize Game Library & Launcher Services
+        _libraryManager = new GameLibraryManager();
+        _launcherService = new GameLauncherService(_libraryManager);
+        _launcherViewModel = new LauncherViewModel(_libraryManager, _launcherService);
+        _launcherWindow = new LauncherWindow(_launcherViewModel);
+
+        // 5. Check Startup Mode
         bool startMinimized = false;
         foreach (var arg in e.Args)
         {
@@ -64,11 +75,12 @@ public partial class App : System.Windows.Application
         // 5. Initialize System Tray Icon
         InitializeTrayIcon();
 
-        // 6. Show Overlay Window (only if not starting minimized at Windows boot)
+        // 7. Show Overlay Window & Launcher Window (only if not starting minimized at Windows boot)
         if (!startMinimized)
         {
             _mainWindow.Show();
             _isOverlayVisible = true;
+            _launcherWindow.Show();
         }
         else
         {
@@ -167,6 +179,13 @@ public partial class App : System.Windows.Application
 
         var contextMenu = new Forms.ContextMenuStrip();
 
+        var openLauncherItem = new Forms.ToolStripMenuItem("Mở Game Launcher");
+        openLauncherItem.Font = new System.Drawing.Font(openLauncherItem.Font, System.Drawing.FontStyle.Bold);
+        openLauncherItem.Click += (s, e) => OpenGameLauncher();
+        contextMenu.Items.Add(openLauncherItem);
+
+        contextMenu.Items.Add(new Forms.ToolStripSeparator());
+
         _toggleMenuItem = new Forms.ToolStripMenuItem($"Bật/Tắt Overlay ({_settings.HotkeyDisplay})");
         _toggleMenuItem.Click += (s, e) => ToggleOverlay();
         contextMenu.Items.Add(_toggleMenuItem);
@@ -204,7 +223,25 @@ public partial class App : System.Windows.Application
         contextMenu.Items.Add(exitItem);
 
         _notifyIcon.ContextMenuStrip = contextMenu;
-        _notifyIcon.DoubleClick += (s, e) => ToggleOverlay();
+        _notifyIcon.DoubleClick += (s, e) => OpenGameLauncher();
+    }
+
+    private void OpenGameLauncher()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_launcherWindow == null)
+            {
+                if (_libraryManager == null) _libraryManager = new GameLibraryManager();
+                if (_launcherService == null) _launcherService = new GameLauncherService(_libraryManager);
+                _launcherViewModel = new LauncherViewModel(_libraryManager, _launcherService);
+                _launcherWindow = new LauncherWindow(_launcherViewModel);
+            }
+
+            _launcherWindow.Show();
+            _launcherWindow.WindowState = WindowState.Normal;
+            _launcherWindow.Activate();
+        });
     }
 
     private void OpenHotkeySettings()
