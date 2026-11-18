@@ -1,4 +1,4 @@
-# Game Performance Overlay (Windows 11)
+# Game Performance Overlay & Game Hub (Windows 11)
 
 [![GitHub Release](https://img.shields.io/github/v/release/tiendung21111/GamePerfOverlay?color=10ff50&label=Download)](https://github.com/tiendung21111/GamePerfOverlay/releases)
 
@@ -7,12 +7,19 @@
 
 ---
 
-Ứng dụng đo nhiệt độ, xung nhịp và % hiệu năng CPU, GPU, VRAM, RAM và FPS siêu nhẹ, giao diện thuần hiển thị (100% trong suốt, chữ xanh neon Game Bar), tối ưu cho game thủ trên Windows 10/11.
+Ứng dụng **Game Launcher & Performance Overlay** 2-trong-1 siêu nhẹ dành cho game thủ trên Windows 10/11:
+1. **Game Hub / Launcher:** Quét tự động và quản lý toàn bộ game trên máy (Steam, Riot Games, Epic Games, Standalone `.exe`), khởi chạy một chạm ("CHƠI NGAY").
+2. **Performance Overlay:** Đo nhiệt độ, xung nhịp, load CPU/GPU, VRAM, RAM và FPS siêu nhạy (zero-hook ETW, 100% trong suốt, chữ xanh neon Game Bar `#10ff50`).
 
 ---
 
 ## 1. Tính Năng Nổi Bật
 
+- **Trung Tâm Quản Lý Trò Chơi (All-in-One Game Launcher):**
+  - **Quét tự động siêu tốc:** Quét toàn bộ thư viện game từ Steam (`libraryfolders.vdf`, `appmanifest_*.acf`), Riot Games (League of Legends, VALORANT) và Epic Games Manifests trên mọi ổ đĩa trong chưa đầy 1 giây.
+  - **Khởi chạy một chạm:** Nhấn **"CHƠI NGAY"** để mở game qua giao thức an toàn (`steam://run/`, Riot Client, Epic URI). Cửa sổ launcher tự động ẩn xuống khay hệ thống để giải phóng toàn bộ RAM/CPU cho game.
+  - **Thêm game thủ công:** Hỗ trợ nút "+ Thêm .exe" để chọn bất kỳ game portable hoặc phần mềm nào ngoài launcher.
+  - **Chế độ Demo Games:** Tích hợp sẵn nút "Demo Games" để nạp ngay các tựa game mẫu trải nghiệm kể cả khi máy chưa cài đặt game nào.
 - **Giao diện thuần hiển thị (Pure HUD):**
   - Nền hoàn toàn trong suốt 100%, không viền, không thanh tiêu đề, không biểu đồ sóng gây rối mắt.
   - Toàn bộ chữ và số hiển thị màu xanh neon Xbox (`#10ff50`), font monospace `Consolas` in đậm kèm hiệu ứng đổ bóng mờ đen (text-shadow) giúp đọc rõ trên mọi nền game (kể cả cảnh tuyết, trời sáng).
@@ -32,12 +39,11 @@
   - Tự động phân loại VRAM Dedicated (card rời) và VRAM Shared (card onboard).
 - **Siêu nhẹ & Tiết kiệm tài nguyên:**
   - Viết bằng C# WPF native trên nền .NET 10.
-  - Chu kỳ đo FPS 100ms siêu nhạy, cảm biến phần cứng 300ms, mức chiếm dụng CPU cực thấp (< 0.1%) và RAM < 30 MB.
-
+  - Chu kỳ đo FPS 100ms siêu nhạy, cảm biến phần cứng 300ms, mức chiếm dụng CPU cực thấp (< 0.1%) và RAM < 30 MB khi chơi game.
 - **Tự khởi động cùng Windows (Chạy ẩn - Không cần mở tay):**
   - Tích hợp sẵn tùy chọn trong menu chuột phải dưới khay hệ thống (System Tray).
   - Sử dụng cơ chế Windows Task Scheduler với quyền `HIGHEST`: Tự động khởi chạy ngầm khi bạn bật máy tính mà **không bị hiện bảng thông báo UAC làm phiền**.
-  - Khi bật máy, app sẽ âm thầm chờ sẵn dưới nền; bạn vào game chỉ việc nhấn **`Ctrl + D + M`** là xem được ngay.
+  - Nhấp đúp vào icon dưới khay hệ thống bất kỳ lúc nào để mở Game Launcher.
 
 ---
 
