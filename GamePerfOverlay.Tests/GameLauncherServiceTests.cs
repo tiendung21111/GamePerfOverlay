@@ -63,4 +63,28 @@ public class GameLauncherServiceTests
         Assert.NotNull(game.LastPlayed);
         Assert.True(game.LastPlayed.Value > DateTime.UtcNow.AddMinutes(-1));
     }
+
+    [Fact]
+    public void Launch_WhenStarterReturnsFalse_DoesNotUpdatePlayCount()
+    {
+        var starter = new MockProcessStarter { ReturnValue = false };
+        var storage = new MockStorage();
+        var manager = new GameLibraryManager(storage, []);
+
+        var game = new GameEntry
+        {
+            Id = "game_failed",
+            Title = "Failed Game",
+            LaunchUri = "invalid://uri",
+            PlayCount = 2
+        };
+        manager.Games.Add(game);
+
+        var launcher = new GameLauncherService(manager, starter);
+        bool success = launcher.Launch(game);
+
+        Assert.False(success);
+        Assert.Equal(2, game.PlayCount);
+        Assert.Null(game.LastPlayed);
+    }
 }

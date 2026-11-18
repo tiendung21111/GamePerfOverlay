@@ -97,6 +97,42 @@ public class GameLibraryManagerTests
     }
 
     [Fact]
+    public void AddCustomGame_DuplicatePath_ReturnsExistingWithoutDuplicating()
+    {
+        var storage = new MockStorage();
+        var manager = new GameLibraryManager(storage, []);
+
+        var first = manager.AddCustomGame(@"C:\Games\RetroGame\game.exe", "Retro Game 1");
+        var second = manager.AddCustomGame(@"C:\Games\RetroGame\game.exe", "Retro Game 2");
+
+        Assert.Equal(first.Id, second.Id);
+        Assert.Single(manager.Games);
+    }
+
+    [Fact]
+    public async Task ScanAllAsync_HandlesDuplicateIdsGracefully()
+    {
+        var storage = new MockStorage();
+        storage.Items.Add(new GameEntry { Id = "dup_id", Title = "Existing Game" });
+
+        var scanner = new MockScanner
+        {
+            GamesToReturn =
+            [
+                new GameEntry { Id = "dup_id", Title = "Updated Name" },
+                new GameEntry { Id = "dup_id", Title = "Duplicate From Scanner" }
+            ]
+        };
+
+        var manager = new GameLibraryManager(storage, [scanner]);
+        // Should not throw ArgumentException
+        await manager.ScanAllAsync();
+
+        Assert.Single(manager.Games);
+        Assert.Equal("Duplicate From Scanner", manager.Games[0].Title);
+    }
+
+    [Fact]
     public void GetFilteredGames_FiltersBySearchAndPlatform()
     {
         var storage = new MockStorage

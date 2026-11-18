@@ -99,12 +99,19 @@ public class RiotScanner : IGameScanner
     private static string[] GetDefaultRiotGameSearchDirs()
     {
         var dirs = new List<string>();
-        foreach (var drive in new[] { @"C:\", @"D:\", @"E:\", @"F:\" })
+        try
         {
-            if (Directory.Exists(drive))
+            foreach (var drive in DriveInfo.GetDrives())
             {
-                dirs.Add(Path.Combine(drive, "Riot Games"));
+                if (drive.DriveType == DriveType.Fixed && drive.IsReady)
+                {
+                    dirs.Add(Path.Combine(drive.RootDirectory.FullName, "Riot Games"));
+                }
             }
+        }
+        catch
+        {
+            dirs.Add(@"C:\Riot Games");
         }
         return dirs.ToArray();
     }
@@ -128,7 +135,7 @@ public class RiotScanner : IGameScanner
                         LaunchArguments = "--launch-product=league_of_legends --launch-patchline=live",
                         InstallPath = lolDir,
                         ExecutablePath = lolExe,
-                        CoverImageUrl = "pack://application:,,,/Assets/covers/lol.jpg",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80",
                         PlayCount = 0
                     };
                 }
@@ -159,7 +166,7 @@ public class RiotScanner : IGameScanner
                         LaunchArguments = "--launch-product=valorant --launch-patchline=live",
                         InstallPath = Path.Combine(baseDir, "VALORANT"),
                         ExecutablePath = valExe,
-                        CoverImageUrl = "pack://application:,,,/Assets/covers/valorant.jpg",
+                        CoverImageUrl = "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80",
                         PlayCount = 0
                     };
                 }

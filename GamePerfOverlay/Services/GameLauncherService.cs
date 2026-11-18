@@ -24,7 +24,7 @@ public class DefaultProcessStarter : IProcessStarter
                 UseShellExecute = useShellExecute
             };
             var process = Process.Start(psi);
-            return process != null;
+            return useShellExecute || process != null;
         }
         catch
         {

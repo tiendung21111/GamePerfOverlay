@@ -52,7 +52,14 @@ public class GameLibraryManager
         var tasks = _scanners.Select(s => s.ScanAsync()).ToArray();
         var results = await Task.WhenAll(tasks);
 
-        var existingMap = Games.ToDictionary(g => g.Id, StringComparer.OrdinalIgnoreCase);
+        var existingMap = new Dictionary<string, GameEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var g in Games)
+        {
+            if (!string.IsNullOrWhiteSpace(g.Id))
+            {
+                existingMap[g.Id] = g;
+            }
+        }
 
         foreach (var scannerResults in results)
         {
@@ -84,6 +91,29 @@ public class GameLibraryManager
 
     public GameEntry AddCustomGame(string exePath, string? title = null)
     {
+        string normalizedPath = exePath;
+        try
+        {
+            normalizedPath = Path.GetFullPath(exePath);
+        }
+        catch
+        {
+        }
+
+        var existing = Games.FirstOrDefault(g =>
+            !string.IsNullOrEmpty(g.ExecutablePath) &&
+            string.Equals(Path.GetFullPath(g.ExecutablePath), normalizedPath, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            if (!string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(existing.Title))
+            {
+                existing.Title = title;
+                Save();
+            }
+            return existing;
+        }
+
         if (string.IsNullOrWhiteSpace(title))
         {
             title = Path.GetFileNameWithoutExtension(exePath);

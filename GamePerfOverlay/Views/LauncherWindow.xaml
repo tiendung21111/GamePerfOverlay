@@ -240,6 +240,17 @@
                                 <Border Width="230" Height="270" Margin="10" Background="#131924" 
                                         BorderBrush="#1e293b" BorderThickness="1" CornerRadius="12" 
                                         ClipToBounds="True">
+                                    <Border.ContextMenu>
+                                        <ContextMenu Background="#131924" Foreground="White" BorderBrush="#1e293b">
+                                            <MenuItem Header="▶ Khởi chạy" 
+                                                      Command="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                      CommandParameter="{Binding}" Foreground="#10ff50" FontWeight="SemiBold"/>
+                                            <Separator Background="#1e293b"/>
+                                            <MenuItem Header="🗑 Xóa khỏi thư viện" 
+                                                      Command="{Binding DataContext.RemoveGameCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                      CommandParameter="{Binding}" Foreground="#f87171"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="140"/> <!-- Cover Art -->
@@ -259,6 +270,17 @@
                                                         CornerRadius="4" Padding="6,2">
                                                     <TextBlock Text="{Binding Platform}" FontSize="9" FontWeight="Bold" Foreground="#10ff50"/>
                                                 </Border>
+
+                                                <!-- Quick Remove Button -->
+                                                <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                        Margin="8"
+                                                        Command="{Binding DataContext.RemoveGameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Xóa game khỏi thư viện"
+                                                        Background="#000000" Opacity="0.8" Foreground="#94a3b8"
+                                                        BorderThickness="0" Padding="6,2" Cursor="Hand">
+                                                    <TextBlock Text="✕" FontSize="10" FontWeight="Bold"/>
+                                                </Button>
                                             </Grid>
                                         </Border>
 
