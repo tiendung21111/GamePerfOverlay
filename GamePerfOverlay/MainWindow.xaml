@@ -15,7 +15,7 @@
         ShowActivated="False"
         Focusable="False"
         ResizeMode="NoResize"
-        Left="20" Top="20"
+        Left="6" Top="6"
         Width="320" Height="130"
         FontFamily="Consolas"
         d:DataContext="{d:DesignInstance vm:OverlayViewModel}">

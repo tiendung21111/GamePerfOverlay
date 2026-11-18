@@ -19,6 +19,8 @@ public partial class App : System.Windows.Application
     private OverlayViewModel? _viewModel;
     private MainWindow? _mainWindow;
     private Forms.NotifyIcon? _notifyIcon;
+    private Forms.ToolStripMenuItem? _toggleMenuItem;
+    private AppSettings _settings = new();
     private CancellationTokenSource? _cts;
     private Task? _updateTask;
 
@@ -28,9 +30,11 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        _settings = SettingsService.Load();
         _cts = new CancellationTokenSource();
         _viewModel = new OverlayViewModel();
         _mainWindow = new MainWindow(_viewModel);
+        _mainWindow.SetPosition(_settings.OverlayLeft, _settings.OverlayTop);
 
         // 1. Initialize Sensor Service
         _sensorService = new SensorService();
@@ -40,8 +44,8 @@ public partial class App : System.Windows.Application
         _fpsTracker = new FpsTracker();
         _fpsTracker.Start();
 
-        // 3. Initialize Global Hotkey (Ctrl + D + M)
-        _hotkeyManager = new HotkeyManager();
+        // 3. Initialize Global Hotkey with loaded settings
+        _hotkeyManager = new HotkeyManager(_settings.HotkeyCodes);
         _hotkeyManager.ToggleRequested += ToggleOverlay;
         _hotkeyManager.Register();
 
@@ -151,18 +155,25 @@ public partial class App : System.Windows.Application
         {
         }
 
+        string initialTooltip = $"Game Performance Overlay ({_settings.HotkeyDisplay})";
+        if (initialTooltip.Length > 63) initialTooltip = initialTooltip.Substring(0, 63);
+
         _notifyIcon = new Forms.NotifyIcon
         {
             Icon = trayIcon,
-            Text = "Game Performance Overlay (Ctrl + D + M)",
+            Text = initialTooltip,
             Visible = true
         };
 
         var contextMenu = new Forms.ContextMenuStrip();
 
-        var toggleItem = new Forms.ToolStripMenuItem("Bật/Tắt Overlay (Ctrl + D + M)");
-        toggleItem.Click += (s, e) => ToggleOverlay();
-        contextMenu.Items.Add(toggleItem);
+        _toggleMenuItem = new Forms.ToolStripMenuItem($"Bật/Tắt Overlay ({_settings.HotkeyDisplay})");
+        _toggleMenuItem.Click += (s, e) => ToggleOverlay();
+        contextMenu.Items.Add(_toggleMenuItem);
+
+        var changeHotkeyItem = new Forms.ToolStripMenuItem("Đổi phím tắt...");
+        changeHotkeyItem.Click += (s, e) => OpenHotkeySettings();
+        contextMenu.Items.Add(changeHotkeyItem);
 
         var autoStartItem = new Forms.ToolStripMenuItem("Khởi động cùng Windows (chạy ẩn)")
         {
@@ -194,6 +205,32 @@ public partial class App : System.Windows.Application
 
         _notifyIcon.ContextMenuStrip = contextMenu;
         _notifyIcon.DoubleClick += (s, e) => ToggleOverlay();
+    }
+
+    private void OpenHotkeySettings()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            var window = new GamePerfOverlay.Views.HotkeySettingsWindow(_settings, newSettings =>
+            {
+                _settings = newSettings;
+                SettingsService.Save(_settings);
+                _hotkeyManager?.UpdateHotkey(_settings.HotkeyCodes);
+
+                if (_toggleMenuItem != null)
+                {
+                    _toggleMenuItem.Text = $"Bật/Tắt Overlay ({_settings.HotkeyDisplay})";
+                }
+
+                if (_notifyIcon != null)
+                {
+                    string fullText = $"Game Performance Overlay ({_settings.HotkeyDisplay})";
+                    _notifyIcon.Text = fullText.Length > 63 ? fullText.Substring(0, 63) : fullText;
+                    _notifyIcon.ShowBalloonTip(2000, "Game Performance Overlay", $"Đã đổi phím tắt thành: {_settings.HotkeyDisplay}", Forms.ToolTipIcon.Info);
+                }
+            });
+            window.ShowDialog();
+        });
     }
 
     protected override void OnExit(ExitEventArgs e)

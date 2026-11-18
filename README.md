@@ -16,11 +16,12 @@
 - **Giao diện thuần hiển thị (Pure HUD):**
   - Nền hoàn toàn trong suốt 100%, không viền, không thanh tiêu đề, không biểu đồ sóng gây rối mắt.
   - Toàn bộ chữ và số hiển thị màu xanh neon Xbox (`#10ff50`), font monospace `Consolas` in đậm kèm hiệu ứng đổ bóng mờ đen (text-shadow) giúp đọc rõ trên mọi nền game (kể cả cảnh tuyết, trời sáng).
-  - Cố định gọn gàng tại góc trên bên trái màn hình (`Top = 20px, Left = 20px`).
+  - Cố định gọn gàng sát góc trên bên trái màn hình (`Top = 6px, Left = 6px`).
 - **Chuột xuyên thấu 100% (Permanent Click-Through):**
   - Tích hợp cờ Win32 `WS_EX_TRANSPARENT | WS_EX_NOACTIVATE`: Mọi cú click chuột, ngắm bắn hay lia góc nhìn trong game đều xuyên thẳng qua cụm số, tuyệt đối không cướp focus hay gây khựng game.
-- **Phím tắt toàn cục:**
-  - Nhấn tổ hợp phím **`Ctrl + D + M`** để bật hoặc ẩn tức thì cụm thông số.
+- **Phím tắt toàn cục tùy biến (Custom Global Hotkey):**
+  - Phím tắt mặc định **`Ctrl + D + M`** để bật hoặc ẩn tức thì cụm thông số.
+  - Hỗ trợ đổi sang phím tắt bất kỳ (`F12`, `Alt + Z`, `Ctrl + Shift + O`,...) qua tùy chọn **"Đổi phím tắt..."** ở menu khay hệ thống, tự động lưu cấu hình.
 - **Đo FPS Zero-Hook (Anti-Cheat Safe 100%):**
   - Đo tốc độ khung hình tức thời (cập nhật 100ms) thông qua cơ chế Event Tracing for Windows (ETW) của Microsoft (tương tự Xbox Game Bar / Intel PresentMon).
   - Không hook hay inject DLL vào game, an toàn tuyệt đối với mọi hệ thống chống gian lận (EasyAntiCheat, BattlEye, Vanguard).

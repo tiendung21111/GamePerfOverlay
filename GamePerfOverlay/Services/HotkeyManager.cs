@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using GamePerfOverlay.Interop;
@@ -7,12 +8,22 @@ namespace GamePerfOverlay.Services;
 
 public class HotkeyManager : IDisposable
 {
-    private readonly HotkeyChordDetector _detector = new();
+    private readonly HotkeyChordDetector _detector;
     private NativeMethods.LowLevelKeyboardProc? _proc;
     private IntPtr _hookId = IntPtr.Zero;
     private bool _disposed;
 
     public event Action? ToggleRequested;
+
+    public HotkeyManager(IEnumerable<int>? initialKeys = null)
+    {
+        _detector = new HotkeyChordDetector(initialKeys);
+    }
+
+    public void UpdateHotkey(IEnumerable<int> keys)
+    {
+        _detector.SetTargetKeys(keys);
+    }
 
     public void Register()
     {

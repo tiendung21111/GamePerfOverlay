@@ -21,6 +21,12 @@ public partial class MainWindow : Window
     {
     }
 
+    public void SetPosition(double left, double top)
+    {
+        Left = left;
+        Top = top;
+    }
+
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
