@@ -9,6 +9,8 @@ namespace GamePerfOverlay.Views;
 
 public partial class LauncherWindow : Window
 {
+    public const string WindowTitle = "Game Hub & Launcher";
+
     public LauncherViewModel ViewModel { get; }
 
     public LauncherWindow(LauncherViewModel viewModel)

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
+using GamePerfOverlay.Interop;
 using GamePerfOverlay.Models;
 using GamePerfOverlay.Services;
 using GamePerfOverlay.ViewModels;
@@ -30,9 +31,29 @@ public partial class App : System.Windows.Application
     private Task? _updateTask;
 
     private volatile bool _isOverlayVisible = true;
+    private static Mutex? _singleInstanceMutex;
+    public const string SingleInstanceMutexName = @"Local\GamePerfOverlay_SingleInstance_Mutex_39F1";
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        var mutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
+        if (!createdNew)
+        {
+            mutex.Dispose();
+
+            // Another instance is already running -> bring existing window to foreground and exit
+            var hwnd = NativeMethods.FindWindow(null, LauncherWindow.WindowTitle);
+            if (hwnd != IntPtr.Zero)
+            {
+                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
+                NativeMethods.SetForegroundWindow(hwnd);
+            }
+            Shutdown();
+            return;
+        }
+
+        _singleInstanceMutex = mutex;
+
         base.OnStartup(e);
 
         _settings = SettingsService.Load();
@@ -285,6 +306,22 @@ public partial class App : System.Windows.Application
             {
                 _notifyIcon.Visible = false;
                 _notifyIcon.Dispose();
+            }
+
+            if (_singleInstanceMutex != null)
+            {
+                try
+                {
+                    _singleInstanceMutex.ReleaseMutex();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    _singleInstanceMutex.Dispose();
+                    _singleInstanceMutex = null;
+                }
             }
         }
         catch
