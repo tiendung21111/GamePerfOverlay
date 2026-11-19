@@ -32,7 +32,10 @@ public partial class App : System.Windows.Application
 
     private volatile bool _isOverlayVisible = true;
     private static Mutex? _singleInstanceMutex;
+    private static EventWaitHandle? _activateEvent;
+    private Task? _activateListenerTask;
     public const string SingleInstanceMutexName = @"Local\GamePerfOverlay_SingleInstance_Mutex_39F1";
+    public const string SingleInstanceEventName = @"Local\GamePerfOverlay_Activate_Event_39F1";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -41,18 +44,42 @@ public partial class App : System.Windows.Application
         {
             mutex.Dispose();
 
-            // Another instance is already running -> bring existing window to foreground and exit
-            var hwnd = NativeMethods.FindWindow(null, LauncherWindow.WindowTitle);
-            if (hwnd != IntPtr.Zero)
+            // Another instance is already running -> signal existing instance via EventWaitHandle
+            bool signaled = false;
+            try
             {
-                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
-                NativeMethods.SetForegroundWindow(hwnd);
+                using var ev = EventWaitHandle.OpenExisting(SingleInstanceEventName);
+                signaled = ev.Set();
             }
+            catch
+            {
+                signaled = false;
+            }
+
+            if (!signaled)
+            {
+                // Fallback to FindWindow if IPC event wasn't openable
+                var hwnd = NativeMethods.FindWindow(null, LauncherWindow.WindowTitle);
+                if (hwnd != IntPtr.Zero)
+                {
+                    NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
+                    NativeMethods.SetForegroundWindow(hwnd);
+                }
+            }
+
             Shutdown();
             return;
         }
 
         _singleInstanceMutex = mutex;
+        try
+        {
+            _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, SingleInstanceEventName);
+        }
+        catch
+        {
+            _activateEvent = null;
+        }
 
         base.OnStartup(e);
 
@@ -62,26 +89,18 @@ public partial class App : System.Windows.Application
         _mainWindow = new MainWindow(_viewModel);
         _mainWindow.SetPosition(_settings.OverlayLeft, _settings.OverlayTop);
 
-        // 1. Initialize Sensor Service
-        _sensorService = new SensorService();
-        _sensorService.Initialize();
-
-        // 2. Initialize FPS Tracker
-        _fpsTracker = new FpsTracker();
-        _fpsTracker.Start();
-
-        // 3. Initialize Global Hotkey with loaded settings
+        // 1. Initialize Global Hotkey with loaded settings
         _hotkeyManager = new HotkeyManager(_settings.HotkeyCodes);
         _hotkeyManager.ToggleRequested += ToggleOverlay;
         _hotkeyManager.Register();
 
-        // 4. Initialize Game Library & Launcher Services
+        // 2. Initialize Game Library & Launcher Services
         _libraryManager = new GameLibraryManager();
         _launcherService = new GameLauncherService(_libraryManager);
         _launcherViewModel = new LauncherViewModel(_libraryManager, _launcherService);
         _launcherWindow = new LauncherWindow(_launcherViewModel);
 
-        // 5. Check Startup Mode
+        // 3. Check Startup Mode
         bool startMinimized = false;
         foreach (var arg in e.Args)
         {
@@ -93,10 +112,10 @@ public partial class App : System.Windows.Application
             }
         }
 
-        // 5. Initialize System Tray Icon
+        // 4. Initialize System Tray Icon
         InitializeTrayIcon();
 
-        // 7. Show Overlay Window & Launcher Window (only if not starting minimized at Windows boot)
+        // 5. Show Overlay Window & Launcher Window immediately (if not starting minimized)
         if (!startMinimized)
         {
             _mainWindow.Show();
@@ -108,9 +127,73 @@ public partial class App : System.Windows.Application
             _isOverlayVisible = false;
         }
 
-        // 6. Start high-frequency background polling loop (100ms)
+        // 6. Start IPC listener task to handle activation signals from secondary instances
+        if (_activateEvent != null)
+        {
+            _activateListenerTask = Task.Run(() =>
+            {
+                var handles = new WaitHandle[] { _activateEvent, _cts.Token.WaitHandle };
+                while (!_cts.Token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        int index = WaitHandle.WaitAny(handles);
+                        if (index == 0)
+                        {
+                            Dispatcher.InvokeAsync(OpenGameLauncher);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch
+                    {
+                        break;
+                    }
+                }
+            });
+        }
+
+        // 7. Background asynchronous initialization of hardware sensors and ETW session
         _updateTask = Task.Run(async () =>
         {
+            try
+            {
+                if (_cts.Token.IsCancellationRequested) return;
+                var sensorService = new SensorService();
+                sensorService.Initialize();
+                if (_cts.Token.IsCancellationRequested)
+                {
+                    sensorService.Dispose();
+                    return;
+                }
+                _sensorService = sensorService;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (_cts.Token.IsCancellationRequested) return;
+                var fpsTracker = new FpsTracker();
+                fpsTracker.Start();
+                if (_cts.Token.IsCancellationRequested)
+                {
+                    fpsTracker.Dispose();
+                    return;
+                }
+                _fpsTracker = fpsTracker;
+            }
+            catch
+            {
+            }
+
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
             int tickCounter = 0;
             HardwareMetrics? cachedMetrics = null;
@@ -259,9 +342,19 @@ public partial class App : System.Windows.Application
                 _launcherWindow = new LauncherWindow(_launcherViewModel);
             }
 
+            if (_launcherWindow.WindowState == WindowState.Minimized)
+            {
+                _launcherWindow.WindowState = WindowState.Normal;
+            }
+
             _launcherWindow.Show();
-            _launcherWindow.WindowState = WindowState.Normal;
             _launcherWindow.Activate();
+
+            var helper = new System.Windows.Interop.WindowInteropHelper(_launcherWindow);
+            if (helper.Handle != IntPtr.Zero)
+            {
+                NativeMethods.SetForegroundWindow(helper.Handle);
+            }
         });
     }
 
@@ -296,7 +389,8 @@ public partial class App : System.Windows.Application
         try
         {
             _cts?.Cancel();
-            try { _updateTask?.Wait(500); } catch { }
+            try { _updateTask?.Wait(1000); } catch { }
+            try { _activateListenerTask?.Wait(500); } catch { }
 
             _hotkeyManager?.Dispose();
             _fpsTracker?.Dispose();
@@ -306,6 +400,12 @@ public partial class App : System.Windows.Application
             {
                 _notifyIcon.Visible = false;
                 _notifyIcon.Dispose();
+            }
+
+            if (_activateEvent != null)
+            {
+                try { _activateEvent.Dispose(); } catch { }
+                _activateEvent = null;
             }
 
             if (_singleInstanceMutex != null)

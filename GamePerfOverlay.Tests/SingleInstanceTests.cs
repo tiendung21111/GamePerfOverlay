@@ -27,4 +27,28 @@ public class SingleInstanceTests
         Assert.StartsWith(@"Local\", App.SingleInstanceMutexName, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Game Hub & Launcher", Views.LauncherWindow.WindowTitle);
     }
+
+    [Fact]
+    public void SingleInstanceEventName_HasValidPrefixAndIdentifier()
+    {
+        Assert.False(string.IsNullOrWhiteSpace(App.SingleInstanceEventName));
+        Assert.StartsWith(@"Local\", App.SingleInstanceEventName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EventWaitHandle_CanSignalBetweenInstances()
+    {
+        string uniqueEventName = @"Local\Test_SingleInstanceEvent_" + Guid.NewGuid().ToString("N");
+
+        using var receiverEvent = new EventWaitHandle(false, EventResetMode.AutoReset, uniqueEventName);
+
+        // Simulate secondary instance opening and signaling
+        using var senderEvent = EventWaitHandle.OpenExisting(uniqueEventName);
+        bool signaled = senderEvent.Set();
+        Assert.True(signaled);
+
+        // Receiver should receive the pulse
+        bool received = receiverEvent.WaitOne(TimeSpan.FromSeconds(2));
+        Assert.True(received);
+    }
 }
