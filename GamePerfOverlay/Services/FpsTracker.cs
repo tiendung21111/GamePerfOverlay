@@ -11,8 +11,8 @@ namespace GamePerfOverlay.Services;
 
 public class FpsTracker : IFpsTracker
 {
-    private static readonly Guid DxgiProviderGuid = new("CA11C036-0102-4A2D-A6AD-666D24135B4A");
-    private static readonly Guid D3D9ProviderGuid = new("783ACA0A-790E-4D7F-8451-AA85051C723B");
+    private static readonly Guid DxgiProviderGuid = new("CA11C036-0102-4A2D-A6AD-F03CFED5D3C9");
+    private static readonly Guid D3D9ProviderGuid = new("783ACA0A-790E-4D7F-8451-AA8505ECF64C");
 
     private readonly FpsCalculator _calculator = new();
     private TraceEventSession? _session;
@@ -43,9 +43,9 @@ public class FpsTracker : IFpsTracker
                 StopOnDispose = true
             };
 
-            // Enable DXGI and D3D9 Present providers
-            _session.EnableProvider(DxgiProviderGuid, TraceEventLevel.Informational, 0x1);
-            _session.EnableProvider(D3D9ProviderGuid, TraceEventLevel.Informational, 0x1);
+            // Enable DXGI and D3D9 Present providers (matchAllKeywords=0 for all presentation events)
+            _session.EnableProvider(DxgiProviderGuid, TraceEventLevel.Informational, 0);
+            _session.EnableProvider(D3D9ProviderGuid, TraceEventLevel.Informational, 0);
 
             _session.Source.Dynamic.All += OnDynamicEvent;
 
@@ -79,26 +79,37 @@ public class FpsTracker : IFpsTracker
 
     private void OnDynamicEvent(TraceEvent data)
     {
-        // Only count Start events to prevent double-counting Start vs Stop
+        // Present Start events: DXGI (ID=42, 55), D3D9 (ID=1) or by Name/Opcode
         int eventId = (int)data.ID;
-        bool isStartEvent = data.EventName.Contains("Start", StringComparison.OrdinalIgnoreCase) ||
-                            eventId == 42 || eventId == 1 || eventId == 372;
+        bool isPresentEvent = eventId == 42 || eventId == 55 || eventId == 1 ||
+                              data.EventName.Contains("Present", StringComparison.OrdinalIgnoreCase);
 
-        if (isStartEvent && data.EventName.Contains("Present", StringComparison.OrdinalIgnoreCase))
+        if (!isPresentEvent)
         {
-            var fgHwnd = NativeMethods.GetForegroundWindow();
-            if (fgHwnd != IntPtr.Zero)
-            {
-                NativeMethods.GetWindowThreadProcessId(fgHwnd, out uint fgPid);
-                if (data.ProcessID == fgPid && fgPid > 4)
-                {
-                    if (IsProcessExcluded(fgPid))
-                    {
-                        return;
-                    }
+            return;
+        }
 
-                    _calculator.RecordFrame(DateTime.UtcNow);
+        bool isStart = eventId == 42 || eventId == 55 || eventId == 1 ||
+                       data.Opcode == TraceEventOpcode.Start ||
+                       data.EventName.Contains("Start", StringComparison.OrdinalIgnoreCase);
+
+        if (!isStart)
+        {
+            return;
+        }
+
+        var fgHwnd = NativeMethods.GetForegroundWindow();
+        if (fgHwnd != IntPtr.Zero)
+        {
+            NativeMethods.GetWindowThreadProcessId(fgHwnd, out uint fgPid);
+            if (fgPid > 4 && data.ProcessID == fgPid)
+            {
+                if (IsProcessExcluded(fgPid))
+                {
+                    return;
                 }
+
+                _calculator.RecordFrame(DateTime.UtcNow);
             }
         }
     }
@@ -122,7 +133,9 @@ public class FpsTracker : IFpsTracker
         }
         catch
         {
-            _cachedPidExcluded = true;
+            // If process cannot be queried (e.g. anti-cheat protected game like LoL / Valorant / CS2),
+            // it is NOT an excluded OS shell process.
+            _cachedPidExcluded = false;
         }
 
         return _cachedPidExcluded;
