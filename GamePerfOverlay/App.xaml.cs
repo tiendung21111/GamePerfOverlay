@@ -201,9 +201,6 @@ public partial class App : System.Windows.Application
             {
                 try
                 {
-                    // Refresh low-level hook periodically to prevent silent unhooking by Windows
-                    _hotkeyManager?.EnsureHookAlive();
-
                     if (_isOverlayVisible && _sensorService != null && _fpsTracker != null)
                     {
                         var fps = _fpsTracker.GetCurrentFps();
@@ -243,6 +240,11 @@ public partial class App : System.Windows.Application
         {
             if (_mainWindow == null) return;
 
+            if (_mainWindow.WindowState == WindowState.Minimized)
+            {
+                _mainWindow.WindowState = WindowState.Normal;
+            }
+
             if (_mainWindow.Visibility == Visibility.Visible)
             {
                 _mainWindow.Visibility = Visibility.Collapsed;
@@ -272,6 +274,10 @@ public partial class App : System.Windows.Application
         Dispatcher.Invoke(() =>
         {
             if (_mainWindow == null) return;
+            if (_mainWindow.WindowState == WindowState.Minimized)
+            {
+                _mainWindow.WindowState = WindowState.Normal;
+            }
             _mainWindow.Visibility = Visibility.Visible;
             _isOverlayVisible = true;
 

@@ -1,32 +1,120 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using GamePerfOverlay.Interop;
 
 namespace GamePerfOverlay.Services;
 
 public class HotkeyManager : IDisposable
 {
+    private const int HOTKEY_ID = 0x484B; // "HK"
+
     private readonly HotkeyChordDetector _detector;
+    private int[] _targetKeys = [];
+    private HwndSource? _hwndSource;
+    private bool _isRegisteredHotKey;
+
     private NativeMethods.LowLevelKeyboardProc? _proc;
     private IntPtr _hookId = IntPtr.Zero;
     private bool _disposed;
-    private DateTime _lastHookRefresh = DateTime.UtcNow;
 
     public event Action? ToggleRequested;
 
+    public bool IsKernelHotKeyActive => _isRegisteredHotKey;
+    public bool IsHookActive => _hookId != IntPtr.Zero;
+
     public HotkeyManager(IEnumerable<int>? initialKeys = null)
     {
-        _detector = new HotkeyChordDetector(initialKeys);
+        var keys = initialKeys?.ToArray() ?? [HotkeyHelper.VK_MENU, 0x51]; // Default: Alt + Q
+        _targetKeys = keys;
+        _detector = new HotkeyChordDetector(keys);
     }
 
     public void UpdateHotkey(IEnumerable<int> keys)
     {
-        _detector.SetTargetKeys(keys);
+        _targetKeys = keys.ToArray();
+        _detector.SetTargetKeys(_targetKeys);
+        Register();
     }
 
     public void Register()
+    {
+        if (_disposed) return;
+
+        // 1. Try native Windows RegisterHotKey first (immune to timeouts, thread-pool issues, and anti-cheat)
+        if (TryParseHotKey(_targetKeys, out uint modifiers, out uint vk))
+        {
+            EnsureHwndSource();
+
+            if (_hwndSource != null && _hwndSource.Handle != IntPtr.Zero)
+            {
+                UnregisterHotKeyOnly();
+
+                if (NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID, modifiers, vk))
+                {
+                    _isRegisteredHotKey = true;
+                    UnregisterHook();
+                    return;
+                }
+            }
+        }
+
+        // 2. Fallback to low-level keyboard hook if RegisterHotKey was not applicable or failed (e.g. conflict)
+        UnregisterHotKeyOnly();
+        RegisterHook();
+    }
+
+    private void EnsureHwndSource()
+    {
+        if (_hwndSource != null) return;
+
+        try
+        {
+            var parameters = new HwndSourceParameters("GamePerfOverlay_HotkeySink")
+            {
+                Width = 0,
+                Height = 0,
+                PositionX = 0,
+                PositionY = 0,
+                WindowStyle = 0
+            };
+            _hwndSource = new HwndSource(parameters);
+            _hwndSource.AddHook(HwndHook);
+        }
+        catch
+        {
+            _hwndSource = null;
+        }
+    }
+
+    private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+        {
+            ToggleRequested?.Invoke();
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
+
+    private void UnregisterHotKeyOnly()
+    {
+        if (_isRegisteredHotKey && _hwndSource != null && _hwndSource.Handle != IntPtr.Zero)
+        {
+            try
+            {
+                NativeMethods.UnregisterHotKey(_hwndSource.Handle, HOTKEY_ID);
+            }
+            catch
+            {
+            }
+            _isRegisteredHotKey = false;
+        }
+    }
+
+    private void RegisterHook()
     {
         if (_hookId != IntPtr.Zero || _disposed) return;
 
@@ -38,23 +126,14 @@ public class HotkeyManager : IDisposable
             _proc,
             moduleHandle,
             0);
-        _lastHookRefresh = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Periodic heartbeat check to re-install the low-level hook if Windows silently unhooked it
-    /// due to LowLevelHooksTimeout (typically 200ms) during high CPU load or game launches.
-    /// </summary>
-    public void EnsureHookAlive()
+    private void UnregisterHook()
     {
-        if (_disposed) return;
-
-        var now = DateTime.UtcNow;
-        if ((now - _lastHookRefresh).TotalSeconds >= 15)
+        if (_hookId != IntPtr.Zero)
         {
-            _lastHookRefresh = now;
-            Unregister();
-            Register();
+            NativeMethods.UnhookWindowsHookEx(_hookId);
+            _hookId = IntPtr.Zero;
         }
     }
 
@@ -84,13 +163,53 @@ public class HotkeyManager : IDisposable
         return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
     }
 
+    public static bool TryParseHotKey(IEnumerable<int> keys, out uint modifiers, out uint vk)
+    {
+        modifiers = 0;
+        vk = 0;
+
+        var normalized = keys.Select(HotkeyHelper.NormalizeVkCode).Distinct().ToList();
+        if (normalized.Count == 0) return false;
+
+        var nonModifiers = new List<int>();
+
+        foreach (var k in normalized)
+        {
+            switch (k)
+            {
+                case HotkeyHelper.VK_CONTROL:
+                    modifiers |= NativeMethods.MOD_CONTROL;
+                    break;
+                case HotkeyHelper.VK_MENU:
+                    modifiers |= NativeMethods.MOD_ALT;
+                    break;
+                case HotkeyHelper.VK_SHIFT:
+                    modifiers |= NativeMethods.MOD_SHIFT;
+                    break;
+                case HotkeyHelper.VK_LWIN:
+                case HotkeyHelper.VK_RWIN:
+                    modifiers |= NativeMethods.MOD_WIN;
+                    break;
+                default:
+                    nonModifiers.Add(k);
+                    break;
+            }
+        }
+
+        if (nonModifiers.Count == 1)
+        {
+            vk = (uint)nonModifiers[0];
+            modifiers |= NativeMethods.MOD_NOREPEAT;
+            return true;
+        }
+
+        return false;
+    }
+
     public void Unregister()
     {
-        if (_hookId != IntPtr.Zero)
-        {
-            NativeMethods.UnhookWindowsHookEx(_hookId);
-            _hookId = IntPtr.Zero;
-        }
+        UnregisterHotKeyOnly();
+        UnregisterHook();
     }
 
     public void Dispose()
@@ -99,5 +218,18 @@ public class HotkeyManager : IDisposable
         _disposed = true;
 
         Unregister();
+
+        if (_hwndSource != null)
+        {
+            try
+            {
+                _hwndSource.RemoveHook(HwndHook);
+                _hwndSource.Dispose();
+            }
+            catch
+            {
+            }
+            _hwndSource = null;
+        }
     }
 }

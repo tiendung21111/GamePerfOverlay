@@ -131,6 +131,43 @@ public class HotkeyManagerTests
     }
 
     [Fact]
+    public void TryParseHotKey_ParsesAltQ_Successfully()
+    {
+        bool success = HotkeyManager.TryParseHotKey([0x12, 0x51], out uint modifiers, out uint vk);
+        Assert.True(success);
+        Assert.Equal(0x51u, vk);
+        Assert.True((modifiers & GamePerfOverlay.Interop.NativeMethods.MOD_ALT) != 0);
+        Assert.True((modifiers & GamePerfOverlay.Interop.NativeMethods.MOD_NOREPEAT) != 0);
+    }
+
+    [Fact]
+    public void TryParseHotKey_ParsesCtrlShiftO_Successfully()
+    {
+        bool success = HotkeyManager.TryParseHotKey([0x11, 0x10, 0x4F], out uint modifiers, out uint vk);
+        Assert.True(success);
+        Assert.Equal(0x4Fu, vk);
+        Assert.True((modifiers & GamePerfOverlay.Interop.NativeMethods.MOD_CONTROL) != 0);
+        Assert.True((modifiers & GamePerfOverlay.Interop.NativeMethods.MOD_SHIFT) != 0);
+    }
+
+    [Fact]
+    public void TryParseHotKey_ParsesSingleKeyF12_Successfully()
+    {
+        bool success = HotkeyManager.TryParseHotKey([0x7B], out uint modifiers, out uint vk);
+        Assert.True(success);
+        Assert.Equal(0x7Bu, vk);
+        Assert.Equal(GamePerfOverlay.Interop.NativeMethods.MOD_NOREPEAT, modifiers);
+    }
+
+    [Fact]
+    public void TryParseHotKey_ReturnsFalse_ForNonModifierChords()
+    {
+        // Ctrl + D + M (2 non-modifier keys D and M) -> must return false and fall back to hook
+        bool success = HotkeyManager.TryParseHotKey([0x11, 0x44, 0x4D], out _, out _);
+        Assert.False(success);
+    }
+
+    [Fact]
     public void SettingsService_SaveAndLoad_RoundtripsSuccessfully()
     {
         var settings = new Models.AppSettings
