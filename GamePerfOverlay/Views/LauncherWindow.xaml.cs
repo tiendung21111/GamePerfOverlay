@@ -26,8 +26,10 @@ public partial class LauncherWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
-            // Auto-minimize/hide to tray when game starts so UI does not consume resources
+            // Auto-minimize/hide launcher to tray when game starts so UI does not consume resources
             Hide();
+            // Automatically ensure overlay HUD is floating on top when game launches
+            (System.Windows.Application.Current as App)?.EnsureOverlayVisible();
         });
     }
 
@@ -51,6 +53,21 @@ public partial class LauncherWindow : Window
     private void AddSampleGames_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.AddSampleGames();
+    }
+
+    private void ToggleOverlayBtn_Click(object sender, RoutedEventArgs e)
+    {
+        (System.Windows.Application.Current as App)?.ToggleOverlayDirect();
+    }
+
+    private void OpenHotkeySettings_Click(object sender, RoutedEventArgs e)
+    {
+        (System.Windows.Application.Current as App)?.OpenHotkeySettingsDirect();
+    }
+
+    private void ExitApp_Click(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Application.Current.Shutdown();
     }
 
     protected override void OnClosing(CancelEventArgs e)

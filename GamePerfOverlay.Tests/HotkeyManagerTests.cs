@@ -6,14 +6,30 @@ namespace GamePerfOverlay.Tests;
 public class HotkeyManagerTests
 {
     private const int VK_CONTROL = 0x11;
+    private const int VK_MENU = 0x12; // Alt
     private const int VK_D = 0x44;
     private const int VK_M = 0x4D;
     private const int VK_A = 0x41;
+    private const int VK_O = 0x4F;
+    private const int VK_Q = 0x51;
+
+    [Fact]
+    public void ChordDetector_DefaultIsAltQ()
+    {
+        var detector = new HotkeyChordDetector();
+
+        // Default combo is Alt + Q
+        Assert.False(detector.ProcessKeyEvent(VK_MENU, true));
+        Assert.True(detector.ProcessKeyEvent(VK_Q, true));
+
+        // Repeat should not trigger
+        Assert.False(detector.ProcessKeyEvent(VK_Q, true));
+    }
 
     [Fact]
     public void ChordDetector_TriggersWhenCtrlDMPressedSimultaneously()
     {
-        var detector = new HotkeyChordDetector();
+        var detector = new HotkeyChordDetector([VK_CONTROL, VK_D, VK_M]);
 
         // Press Ctrl
         Assert.False(detector.ProcessKeyEvent(VK_CONTROL, true));
@@ -33,13 +49,41 @@ public class HotkeyManagerTests
     }
 
     [Fact]
+    public void ChordDetector_SelfHeals_WhenKeyUpDropped_UsingPhysicalChecker()
+    {
+        var detector = new HotkeyChordDetector([VK_MENU, VK_Q]); // Alt + Q
+
+        // 1. Press Alt and Q -> triggers
+        Assert.False(detector.ProcessKeyEvent(VK_MENU, true));
+        Assert.True(detector.ProcessKeyEvent(VK_Q, true));
+
+        // 2. Both keys are released in the real world, but Windows hook DROPPED KeyUp for VK_Q!
+        detector.ProcessKeyEvent(VK_MENU, false);
+        // Notice: VK_Q was NEVER sent a KeyUp!
+
+        // 3. User attempts to toggle again later by pressing Alt.
+        // Physical key checker returns true ONLY for keys currently physically down.
+        // At this instant, only Alt is down, Q is physically released.
+        bool isPhysicalDownAltOnly(int k) => k == VK_MENU;
+
+        // ProcessKeyEvent should detect that VK_Q is physically released, clean it out, and reset _triggered!
+        Assert.False(detector.ProcessKeyEvent(VK_MENU, true, isPhysicalDownAltOnly));
+
+        // 4. User now presses Q. Both Alt and Q are down.
+        bool isPhysicalDownBoth(int k) => k == VK_MENU || k == VK_Q;
+
+        // MUST TRIGGER! Without self-healing, this would fail because _triggered was stuck from the missed KeyUp.
+        Assert.True(detector.ProcessKeyEvent(VK_Q, true, isPhysicalDownBoth));
+    }
+
+    [Fact]
     public void ChordDetector_DoesNotTrigger_ForOtherKeys()
     {
         var detector = new HotkeyChordDetector();
 
-        detector.ProcessKeyEvent(VK_CONTROL, true);
+        detector.ProcessKeyEvent(VK_MENU, true);
         detector.ProcessKeyEvent(VK_A, true);
-        var triggered = detector.ProcessKeyEvent(VK_M, true);
+        var triggered = detector.ProcessKeyEvent(VK_O, true);
 
         Assert.False(triggered);
     }
@@ -59,7 +103,6 @@ public class HotkeyManagerTests
     [Fact]
     public void ChordDetector_CustomChord_CtrlShiftO()
     {
-        const int VK_O = 0x4F;
         var detector = new HotkeyChordDetector([HotkeyHelper.VK_CONTROL, HotkeyHelper.VK_SHIFT, VK_O]);
 
         Assert.False(detector.ProcessKeyEvent(HotkeyHelper.VK_LCONTROL, true));
@@ -70,6 +113,10 @@ public class HotkeyManagerTests
     [Fact]
     public void HotkeyHelper_FormatsCorrectly()
     {
+        // Alt + Q
+        string formatted0 = HotkeyHelper.FormatHotkey([0x51, 0x12]);
+        Assert.Equal("Alt + Q", formatted0);
+
         // Ctrl + Shift + O
         string formatted1 = HotkeyHelper.FormatHotkey([0x4F, 0x10, 0x11]);
         Assert.Equal("Ctrl + Shift + O", formatted1);
@@ -88,8 +135,8 @@ public class HotkeyManagerTests
     {
         var settings = new Models.AppSettings
         {
-            HotkeyCodes = [0x11, 0x10, 0x4F],
-            HotkeyDisplay = "Ctrl + Shift + O"
+            HotkeyCodes = [0x12, 0x51],
+            HotkeyDisplay = "Alt + Q"
         };
 
         bool saved = SettingsService.Save(settings);
@@ -97,7 +144,7 @@ public class HotkeyManagerTests
 
         var loaded = SettingsService.Load();
         Assert.NotNull(loaded);
-        Assert.Equal("Ctrl + Shift + O", loaded.HotkeyDisplay);
-        Assert.Equal([0x11, 0x10, 0x4F], loaded.HotkeyCodes);
+        Assert.Equal("Alt + Q", loaded.HotkeyDisplay);
+        Assert.Equal([0x12, 0x51], loaded.HotkeyCodes);
     }
 }

@@ -25,6 +25,26 @@ public class FpsTrackerTests
     }
 
     [Fact]
+    public void FpsCalculator_DiscardsDuplicateFramesWithinHalfMillisecond()
+    {
+        var calculator = new FpsCalculator();
+        var now = DateTime.UtcNow;
+
+        // Record 60 frames, but with duplicate events 0.1ms apart (e.g. MPO Event 55 + Event 42)
+        for (int i = 0; i < 60; i++)
+        {
+            var frameTime = now.AddMilliseconds(-1000 + (i * (1000.0 / 60.0)));
+            calculator.RecordFrame(frameTime);
+            calculator.RecordFrame(frameTime.AddMilliseconds(0.1)); // Duplicate event within 0.5ms
+        }
+
+        var fps = calculator.GetFps(now);
+        Assert.NotNull(fps);
+        // Must NOT double-count to 120 FPS
+        Assert.InRange(fps.Value, 58, 62);
+    }
+
+    [Fact]
     public void FpsCalculator_ReturnsNull_WhenNoRecentFrames()
     {
         var calculator = new FpsCalculator();

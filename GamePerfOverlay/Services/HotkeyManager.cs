@@ -12,6 +12,7 @@ public class HotkeyManager : IDisposable
     private NativeMethods.LowLevelKeyboardProc? _proc;
     private IntPtr _hookId = IntPtr.Zero;
     private bool _disposed;
+    private DateTime _lastHookRefresh = DateTime.UtcNow;
 
     public event Action? ToggleRequested;
 
@@ -37,6 +38,29 @@ public class HotkeyManager : IDisposable
             _proc,
             moduleHandle,
             0);
+        _lastHookRefresh = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Periodic heartbeat check to re-install the low-level hook if Windows silently unhooked it
+    /// due to LowLevelHooksTimeout (typically 200ms) during high CPU load or game launches.
+    /// </summary>
+    public void EnsureHookAlive()
+    {
+        if (_disposed) return;
+
+        var now = DateTime.UtcNow;
+        if ((now - _lastHookRefresh).TotalSeconds >= 15)
+        {
+            _lastHookRefresh = now;
+            Unregister();
+            Register();
+        }
+    }
+
+    private static bool IsPhysicalKeyDown(int vkCode)
+    {
+        return (NativeMethods.GetAsyncKeyState(vkCode) & 0x8000) != 0;
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -50,7 +74,7 @@ public class HotkeyManager : IDisposable
             if (isDown || isUp)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
-                if (_detector.ProcessKeyEvent(vkCode, isDown))
+                if (_detector.ProcessKeyEvent(vkCode, isDown, IsPhysicalKeyDown))
                 {
                     ToggleRequested?.Invoke();
                 }

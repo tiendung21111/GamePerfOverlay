@@ -104,8 +104,7 @@ public partial class App : System.Windows.Application
         bool startMinimized = false;
         foreach (var arg in e.Args)
         {
-            if (arg.Equals("--minimized", StringComparison.OrdinalIgnoreCase) ||
-                arg.Equals("--autostart", StringComparison.OrdinalIgnoreCase))
+            if (arg.Equals("--minimized", StringComparison.OrdinalIgnoreCase))
             {
                 startMinimized = true;
                 break;
@@ -202,6 +201,9 @@ public partial class App : System.Windows.Application
             {
                 try
                 {
+                    // Refresh low-level hook periodically to prevent silent unhooking by Windows
+                    _hotkeyManager?.EnsureHookAlive();
+
                     if (_isOverlayVisible && _sensorService != null && _fpsTracker != null)
                     {
                         var fps = _fpsTracker.GetCurrentFps();
@@ -250,6 +252,37 @@ public partial class App : System.Windows.Application
             {
                 _mainWindow.Visibility = Visibility.Visible;
                 _isOverlayVisible = true;
+
+                // Re-assert TopMost Z-order with SWP_NOACTIVATE so fullscreen/borderless game doesn't lose focus
+                var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
+                if (helper.Handle != IntPtr.Zero)
+                {
+                    NativeMethods.SetWindowPos(
+                        helper.Handle,
+                        NativeMethods.HWND_TOPMOST,
+                        0, 0, 0, 0,
+                        NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+                }
+            }
+        });
+    }
+
+    public void EnsureOverlayVisible()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_mainWindow == null) return;
+            _mainWindow.Visibility = Visibility.Visible;
+            _isOverlayVisible = true;
+
+            var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
+            if (helper.Handle != IntPtr.Zero)
+            {
+                NativeMethods.SetWindowPos(
+                    helper.Handle,
+                    NativeMethods.HWND_TOPMOST,
+                    0, 0, 0, 0,
+                    NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
             }
         });
     }
@@ -298,7 +331,7 @@ public partial class App : System.Windows.Application
         changeHotkeyItem.Click += (s, e) => OpenHotkeySettings();
         contextMenu.Items.Add(changeHotkeyItem);
 
-        var autoStartItem = new Forms.ToolStripMenuItem("Khởi động cùng Windows (chạy ẩn)")
+        var autoStartItem = new Forms.ToolStripMenuItem("Khởi động cùng Windows (mở Launcher)")
         {
             CheckOnClick = true,
             Checked = AutoStartManager.IsAutoStartEnabled()
@@ -314,7 +347,7 @@ public partial class App : System.Windows.Application
             }
             else
             {
-                var msg = newState ? "Đã bật tự động khởi động cùng Windows (chạy ẩn)." : "Đã tắt tự động khởi động cùng Windows.";
+                var msg = newState ? "Đã bật tự động khởi động cùng Windows (mở Launcher)." : "Đã tắt tự động khởi động cùng Windows.";
                 _notifyIcon?.ShowBalloonTip(2000, "Game Performance Overlay", msg, Forms.ToolTipIcon.Info);
             }
         };
@@ -355,7 +388,20 @@ public partial class App : System.Windows.Application
             {
                 NativeMethods.SetForegroundWindow(helper.Handle);
             }
+
+            // Also ensure the Overlay HUD is visible so the user can view their metrics
+            EnsureOverlayVisible();
         });
+    }
+
+    public void ToggleOverlayDirect()
+    {
+        ToggleOverlay();
+    }
+
+    public void OpenHotkeySettingsDirect()
+    {
+        OpenHotkeySettings();
     }
 
     private void OpenHotkeySettings()

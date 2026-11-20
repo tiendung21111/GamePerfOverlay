@@ -37,7 +37,8 @@ public static class AutoStartManager
                 if (string.IsNullOrEmpty(exePath)) return false;
 
                 // Create scheduled task to run at logon with highest privileges (no UAC prompt on boot)
-                var args = $"/Create /TN \"{TaskName}\" /TR \"\\\"{exePath}\\\" --minimized\" /SC ONLOGON /RL HIGHEST /F";
+                // Starts the application and displays the Launcher & Overlay HUD directly on boot
+                var args = $"/Create /TN \"{TaskName}\" /TR \"\\\"{exePath}\\\"\" /SC ONLOGON /RL HIGHEST /F";
                 var psi = new ProcessStartInfo("schtasks.exe", args)
                 {
                     CreateNoWindow = true,

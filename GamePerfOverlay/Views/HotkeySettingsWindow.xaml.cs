@@ -30,7 +30,7 @@ public partial class HotkeySettingsWindow : Window
 
         _capturedCodes = currentSettings.HotkeyCodes != null && currentSettings.HotkeyCodes.Length > 0
             ? currentSettings.HotkeyCodes
-            : [0x11, 0x44, 0x4D];
+            : [0x12, 0x51];
 
         HotkeyDisplayText.Text = !string.IsNullOrWhiteSpace(currentSettings.HotkeyDisplay)
             ? currentSettings.HotkeyDisplay
@@ -72,10 +72,10 @@ public partial class HotkeySettingsWindow : Window
 
     private void ResetDefaultButton_Click(object sender, RoutedEventArgs e)
     {
-        _capturedCodes = [0x11, 0x44, 0x4D];
+        _capturedCodes = [0x12, 0x51];
         _heldKeys.Clear();
-        HotkeyDisplayText.Text = "Ctrl + D + M";
-        StatusHintText.Text = "Đã đặt về mặc định: Ctrl + D + M (Nhấn 'Lưu phím tắt' để áp dụng)";
+        HotkeyDisplayText.Text = "Alt + Q";
+        StatusHintText.Text = "Đã đặt về mặc định: Alt + Q (Nhấn 'Lưu phím tắt' để áp dụng)";
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)

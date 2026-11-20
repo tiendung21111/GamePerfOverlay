@@ -186,10 +186,30 @@
                         <TextBlock Text="Demo Games"/>
                     </Button>
 
-                    <!-- HUD Tag -->
-                    <Border Background="#10ff50" Opacity="0.15" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
-                        <TextBlock Text="HUD: Ctrl+D+M" FontWeight="Bold" FontSize="11" Foreground="#10ff50"/>
-                    </Border>
+                    <!-- Interactive HUD & Window Controls -->
+                    <Button Click="ToggleOverlayBtn_Click" Style="{StaticResource ActionButton}" 
+                            Background="#14261c" BorderBrush="#10ff50" BorderThickness="1" Foreground="#10ff50" 
+                            FontWeight="SemiBold" FontSize="12" Padding="10,7" Margin="0,0,8,0"
+                            ToolTip="Bật / Tắt ngay Overlay FPS &amp; Phần cứng trên màn hình (Mặc định: Alt + Q)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📊" Margin="0,0,5,0"/>
+                            <TextBlock Text="Bật/Tắt HUD"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Click="OpenHotkeySettings_Click" Style="{StaticResource ActionButton}" 
+                            Background="#182030" BorderBrush="#334155" BorderThickness="1" Foreground="#94a3b8" 
+                            FontSize="12" Padding="8,7" Margin="0,0,8,0"
+                            ToolTip="Đổi phím tắt bật/tắt Overlay">
+                        <TextBlock Text="⚙️"/>
+                    </Button>
+
+                    <Button Click="ExitApp_Click" Style="{StaticResource ActionButton}" 
+                            Background="#2d1515" BorderBrush="#ef4444" BorderThickness="1" Foreground="#f87171" 
+                            FontWeight="SemiBold" FontSize="12" Padding="10,7"
+                            ToolTip="Thoát hoàn toàn ứng dụng Game Performance Overlay">
+                        <TextBlock Text="✕ Thoát"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -291,7 +311,12 @@
                                 <Border Width="6" Height="6" CornerRadius="3" Background="#10ff50" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                 <TextBlock Text="Overlay HUD: Sẵn sàng" FontSize="11" Foreground="#f1f5f9" FontWeight="SemiBold"/>
                             </StackPanel>
-                            <TextBlock Text="Khi vào game: Cửa sổ tự thu gọn xuống Tray" FontSize="10" Foreground="#94a3b8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Khi vào game: Cửa sổ tự thu gọn xuống Tray" FontSize="10" Foreground="#94a3b8" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <Button Click="ToggleOverlayBtn_Click" Style="{StaticResource ActionButton}"
+                                    Background="#1e293b" BorderBrush="#3b82f6" BorderThickness="1"
+                                    Padding="8,6" HorizontalAlignment="Stretch">
+                                <TextBlock Text="📊 Bật / Tắt Overlay HUD" FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8"/>
+                            </Button>
                         </StackPanel>
                     </Border>
                 </Grid>

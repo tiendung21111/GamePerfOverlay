@@ -79,66 +79,55 @@ public class FpsTracker : IFpsTracker
 
     private void OnDynamicEvent(TraceEvent data)
     {
-        // Present Start events: DXGI (ID=42, 55), D3D9 (ID=1) or by Name/Opcode
+        // Present Start events: DXGI (ID=42), D3D9 (ID=1), or DXGI MultiplaneOverlay (ID=55)
         int eventId = (int)data.ID;
-        bool isPresentEvent = eventId == 42 || eventId == 55 || eventId == 1 ||
-                              data.EventName.Contains("Present", StringComparison.OrdinalIgnoreCase);
+        bool isPresentEvent = eventId == 42 || eventId == 1 || eventId == 55 ||
+            (data.Opcode == TraceEventOpcode.Start && data.EventName.Contains("Present", StringComparison.OrdinalIgnoreCase));
 
         if (!isPresentEvent)
         {
             return;
         }
 
-        bool isStart = eventId == 42 || eventId == 55 || eventId == 1 ||
-                       data.Opcode == TraceEventOpcode.Start ||
-                       data.EventName.Contains("Start", StringComparison.OrdinalIgnoreCase);
-
-        if (!isStart)
+        // Cache foreground window PID periodically (every 100ms) to avoid high user32 context-switch overhead
+        var now = DateTime.UtcNow;
+        if ((now - _lastPidCheck).TotalMilliseconds > 100)
         {
-            return;
+            _lastPidCheck = now;
+            var fgHwnd = NativeMethods.GetForegroundWindow();
+            if (fgHwnd != IntPtr.Zero)
+            {
+                NativeMethods.GetWindowThreadProcessId(fgHwnd, out _cachedPid);
+                _cachedPidExcluded = _cachedPid <= 4 || ExcludedProcesses.Contains(GetProcessNameSafe(_cachedPid));
+            }
+            else
+            {
+                _cachedPid = 0;
+                _cachedPidExcluded = true;
+            }
         }
 
-        var fgHwnd = NativeMethods.GetForegroundWindow();
-        if (fgHwnd != IntPtr.Zero)
+        if (_cachedPid > 4 && data.ProcessID == _cachedPid && !_cachedPidExcluded)
         {
-            NativeMethods.GetWindowThreadProcessId(fgHwnd, out uint fgPid);
-            if (fgPid > 4 && data.ProcessID == fgPid)
-            {
-                if (IsProcessExcluded(fgPid))
-                {
-                    return;
-                }
-
-                _calculator.RecordFrame(DateTime.UtcNow);
-            }
+            // Use high-resolution hardware timestamp from ETW kernel event (ToUniversalTime)
+            // instead of managed DateTime.UtcNow to eliminate batch-flush latency jitter
+            _calculator.RecordFrame(data.TimeStamp.ToUniversalTime());
         }
     }
 
-    private bool IsProcessExcluded(uint pid)
+    private static string GetProcessNameSafe(uint pid)
     {
-        var now = DateTime.UtcNow;
-        if (pid == _cachedPid && (now - _lastPidCheck).TotalSeconds < 2.0)
-        {
-            return _cachedPidExcluded;
-        }
-
-        _cachedPid = pid;
-        _lastPidCheck = now;
-        _cachedPidExcluded = false;
-
         try
         {
             using var proc = Process.GetProcessById((int)pid);
-            _cachedPidExcluded = ExcludedProcesses.Contains(proc.ProcessName);
+            return proc.ProcessName;
         }
         catch
         {
-            // If process cannot be queried (e.g. anti-cheat protected game like LoL / Valorant / CS2),
-            // it is NOT an excluded OS shell process.
-            _cachedPidExcluded = false;
+            // Protected anti-cheat games (e.g. Valorant Vanguard, LoL) throw access denied,
+            // so they are definitely not excluded OS shell apps.
+            return string.Empty;
         }
-
-        return _cachedPidExcluded;
     }
 
     public int? GetCurrentFps()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -11,7 +12,7 @@ public class HotkeyChordDetector
 
     public HotkeyChordDetector(IEnumerable<int>? targetKeys = null)
     {
-        SetTargetKeys(targetKeys ?? [0x11, 0x44, 0x4D]); // Default: Ctrl + D + M
+        SetTargetKeys(targetKeys ?? [HotkeyHelper.VK_MENU, 0x51]); // Default: Alt + Q
     }
 
     public void SetTargetKeys(IEnumerable<int> keys)
@@ -39,13 +40,30 @@ public class HotkeyChordDetector
         }
     }
 
-    public bool ProcessKeyEvent(int vkCode, bool isDown)
+    /// <summary>
+    /// Processes key down / up events.
+    /// Supports an optional physical key state delegate (e.g. via GetAsyncKeyState)
+    /// to self-heal and unstick chords if Windows dropped a KeyUp event.
+    /// </summary>
+    public bool ProcessKeyEvent(int vkCode, bool isDown, Func<int, bool>? isPhysicalKeyDown = null)
     {
         int normalized = HotkeyHelper.NormalizeVkCode(vkCode);
 
         lock (_targetKeys)
         {
             if (_targetKeys.Count == 0) return false;
+
+            // Self-heal: If physical key checker is provided, purge any keys that are physically released.
+            // This prevents chords getting permanently stuck if Windows drops a KeyUp message.
+            if (isPhysicalKeyDown != null)
+            {
+                _pressedKeys.RemoveWhere(k => !isPhysicalKeyDown(k));
+
+                if (!_targetKeys.All(isPhysicalKeyDown))
+                {
+                    _triggered = false;
+                }
+            }
 
             if (isDown)
             {
