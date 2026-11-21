@@ -97,13 +97,12 @@ public class FpsTracker : IFpsTracker
             var fgHwnd = NativeMethods.GetForegroundWindow();
             if (fgHwnd != IntPtr.Zero)
             {
-                NativeMethods.GetWindowThreadProcessId(fgHwnd, out _cachedPid);
-                _cachedPidExcluded = _cachedPid <= 4 || ExcludedProcesses.Contains(GetProcessNameSafe(_cachedPid));
-            }
-            else
-            {
-                _cachedPid = 0;
-                _cachedPidExcluded = true;
+                NativeMethods.GetWindowThreadProcessId(fgHwnd, out uint pid);
+                if (pid > 4 && pid != _cachedPid)
+                {
+                    _cachedPid = pid;
+                    _cachedPidExcluded = ExcludedProcesses.Contains(GetProcessNameSafe(_cachedPid));
+                }
             }
         }
 

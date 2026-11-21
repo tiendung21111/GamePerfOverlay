@@ -58,6 +58,33 @@ public class FpsTrackerTests
     }
 
     [Fact]
+    public void FpsCalculator_MaintainsFpsBetweenEtwFlushes_DoesNotFlickerToNull()
+    {
+        var calculator = new FpsCalculator();
+        var baseTime = DateTime.UtcNow;
+
+        // Simulate an ETW batch arriving with 60 frames over 1 second
+        for (int i = 0; i < 60; i++)
+        {
+            calculator.RecordFrame(baseTime.AddMilliseconds(-1000 + (i * (1000.0 / 60.0))));
+        }
+
+        // At 500ms after batch arrival (in the middle of ETW buffering interval)
+        var fpsAt500ms = calculator.GetFps(baseTime.AddMilliseconds(500));
+        Assert.NotNull(fpsAt500ms);
+        Assert.InRange(fpsAt500ms.Value, 58, 62);
+
+        // At 1500ms after batch arrival (where old code prematurely flipped to null)
+        var fpsAt1500ms = calculator.GetFps(baseTime.AddMilliseconds(1500));
+        Assert.NotNull(fpsAt1500ms);
+        Assert.InRange(fpsAt1500ms.Value, 58, 62);
+
+        // At 2500ms after batch arrival (game closed / truly idle) -> flips to null
+        var fpsAt2500ms = calculator.GetFps(baseTime.AddMilliseconds(2500));
+        Assert.Null(fpsAt2500ms);
+    }
+
+    [Fact]
     public void FpsTracker_CanStartAndStop_WithoutThrowing()
     {
         using var tracker = new FpsTracker();
