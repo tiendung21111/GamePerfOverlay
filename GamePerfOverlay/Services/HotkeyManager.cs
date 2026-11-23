@@ -20,6 +20,9 @@ public class HotkeyManager : IDisposable
     private IntPtr _hookId = IntPtr.Zero;
     private bool _disposed;
 
+    private DateTime _lastTriggerTime = DateTime.MinValue;
+    private readonly object _triggerLock = new();
+
     public event Action? ToggleRequested;
 
     public bool IsKernelHotKeyActive => _isRegisteredHotKey;
@@ -43,7 +46,8 @@ public class HotkeyManager : IDisposable
     {
         if (_disposed) return;
 
-        // 1. Try native Windows RegisterHotKey first (immune to timeouts, thread-pool issues, and anti-cheat)
+        // 1. Primary Engine: Native Windows RegisterHotKey
+        // Handled by Windows Kernel, immune to anti-cheat, timeouts, and heavy CPU load
         if (TryParseHotKey(_targetKeys, out uint modifiers, out uint vk))
         {
             EnsureHwndSource();
@@ -55,15 +59,33 @@ public class HotkeyManager : IDisposable
                 if (NativeMethods.RegisterHotKey(_hwndSource.Handle, HOTKEY_ID, modifiers, vk))
                 {
                     _isRegisteredHotKey = true;
-                    UnregisterHook();
-                    return;
                 }
             }
         }
+        else
+        {
+            UnregisterHotKeyOnly();
+        }
 
-        // 2. Fallback to low-level keyboard hook if RegisterHotKey was not applicable or failed (e.g. conflict)
-        UnregisterHotKeyOnly();
+        // 2. Parallel Secondary Engine: Low-Level Keyboard Hook (WH_KEYBOARD_LL)
+        // Kept active alongside RegisterHotKey to guarantee capture in games (e.g. LoL, CS2)
+        // that use DirectInput/RawInput or swallow WM_HOTKEY in exclusive window modes.
         RegisterHook();
+    }
+
+    private void TriggerToggle()
+    {
+        lock (_triggerLock)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _lastTriggerTime).TotalMilliseconds < 350)
+            {
+                return; // Debounce rapid / duplicate triggers between the two engines
+            }
+            _lastTriggerTime = now;
+        }
+
+        ToggleRequested?.Invoke();
     }
 
     private void EnsureHwndSource()
@@ -93,7 +115,7 @@ public class HotkeyManager : IDisposable
     {
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
         {
-            ToggleRequested?.Invoke();
+            TriggerToggle();
             handled = true;
         }
         return IntPtr.Zero;
@@ -155,7 +177,7 @@ public class HotkeyManager : IDisposable
                 int vkCode = Marshal.ReadInt32(lParam);
                 if (_detector.ProcessKeyEvent(vkCode, isDown, IsPhysicalKeyDown))
                 {
-                    ToggleRequested?.Invoke();
+                    TriggerToggle();
                 }
             }
         }

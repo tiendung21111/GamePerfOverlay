@@ -225,6 +225,24 @@ public partial class App : System.Windows.Application
                                 () => _viewModel?.Update(metricsToPush),
                                 DispatcherPriority.Render);
                         }
+
+                        // Re-assert TopMost Z-order periodically (every 1 second)
+                        // Ensures the overlay remains on top of borderless/fullscreen games like LoL
+                        if (tickCounter % 10 == 0)
+                        {
+                            _ = _mainWindow.Dispatcher.InvokeAsync(() =>
+                            {
+                                var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
+                                if (helper.Handle != IntPtr.Zero && _mainWindow.Visibility == Visibility.Visible)
+                                {
+                                    NativeMethods.SetWindowPos(
+                                        helper.Handle,
+                                        NativeMethods.HWND_TOPMOST,
+                                        0, 0, 0, 0,
+                                        NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+                                }
+                            }, DispatcherPriority.Background);
+                        }
                     }
                 }
                 catch
@@ -259,6 +277,7 @@ public partial class App : System.Windows.Application
                 var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
                 if (helper.Handle != IntPtr.Zero)
                 {
+                    NativeMethods.BringWindowToTop(helper.Handle);
                     NativeMethods.SetWindowPos(
                         helper.Handle,
                         NativeMethods.HWND_TOPMOST,
@@ -284,6 +303,7 @@ public partial class App : System.Windows.Application
             var helper = new System.Windows.Interop.WindowInteropHelper(_mainWindow);
             if (helper.Handle != IntPtr.Zero)
             {
+                NativeMethods.BringWindowToTop(helper.Handle);
                 NativeMethods.SetWindowPos(
                     helper.Handle,
                     NativeMethods.HWND_TOPMOST,
